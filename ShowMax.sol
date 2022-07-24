@@ -11,15 +11,13 @@ contract ShowMax is Ownable, ERC20 {
     // user details
     struct User {
         uint256 tokensPurchased;
-        string[] moviesViewed;
+        uint256[] moviesViewed;
     }
 
     // movie details
     struct Movie {
         uint256 serialNo;
-        string name;
-        string description;
-        uint256 length;
+        string metaDataUrl;
         uint256 rates;
         uint256 rateCount;
         uint256 timesViewed;
@@ -67,17 +65,12 @@ contract ShowMax is Ownable, ERC20 {
     // Add new movie into the studio
     // @_length in seconds
     function AddMovie(
-        string memory _name,
-        string memory _description,
-        uint256 _length,
+        string memory _metaDataUrl,
         uint256 _value
     ) public onlyOwner {
-        require(_length > 1 minutes, "Movie length too short");
         movies[serial] = Movie(
             serial,
-            _name,
-            _description,
-            _length,
+            _metaDataUrl,
             5,
             1,
             0,
@@ -93,12 +86,7 @@ contract ShowMax is Ownable, ERC20 {
     }
 
     // function to swap customer token for eth from contract
-    function swapTokens(uint256 _quantity) public payable {
-        require(_quantity > 0, "Invalid quantity of tokens entered");
-        require(
-            _quantity <= erc20Balance(msg.sender),
-            "Quantity requested higher that your balance"
-        );
+    function swapTokens(uint256 _quantity) public payable canSwap(_quantity) {        
         // first send token to contract
         _transfer(msg.sender, address(this), _quantity);
         // then get value of token in user wallet in return
@@ -145,7 +133,7 @@ contract ShowMax is Ownable, ERC20 {
         _transfer(msg.sender, address(this), calculatedValue);
         movies[_serial].timesViewed++;
         // Storage in the client's history of watched movies
-        users[msg.sender].moviesViewed.push(movies[_serial].name);
+        users[msg.sender].moviesViewed.push(_serial);
     }
 
     // function to rate a movie, 1 and 5 inclusive
@@ -159,7 +147,7 @@ contract ShowMax is Ownable, ERC20 {
 
 
     // get details of movieuser has viewed
-    function getMoviesViewed() public view returns (string[] memory) {
+    function getMoviesViewed() public view returns (uint256[] memory) {
         return users[msg.sender].moviesViewed;
     }
 
@@ -168,9 +156,7 @@ contract ShowMax is Ownable, ERC20 {
         public
         view
         returns (
-            string memory name,
-            string memory description,
-            uint256 length,
+           string memory metaDataUrl,
             uint256 timesViewed,
             uint256 rating,
             uint256 value
@@ -178,9 +164,7 @@ contract ShowMax is Ownable, ERC20 {
     {
         require(movies[_serial].active, "Movie not active / movie deleted");
         Movie memory movie = movies[_serial];
-        name = movie.name;
-        description = movie.description;
-        length = movie.length;
+        metaDataUrl = movie.metaDataUrl;
         timesViewed = movie.timesViewed;
         rating = movie.rates / movie.rateCount;
         value = calculateValue(movie.serialNo);
@@ -197,4 +181,15 @@ contract ShowMax is Ownable, ERC20 {
         uint256 organicBal = address(this).balance - secureHodlers;
         payable(owner()).transfer(organicBal);
     }
+
+    modifier canSwap(uint256 _quantity) {
+        require(_quantity > 0, "Invalid quantity of tokens entered");
+        require(
+            _quantity <= erc20Balance(msg.sender),
+            "Quantity requested higher that your balance"
+        );
+    _;
+    }
+
+ 
 }
